@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GraphQL Message Board</title>
+  
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      margin: 0;
+    }
+  
+    textarea {
+      width: 100%;
+      height: 80px;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: #000;
+      color: #fff;
+      font-size: 1rem;
+      border: none;
+      outline: none;
+    }
+  
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background-color: #fff;
+      color: #000;
+      border: none;
+      cursor: pointer;
+    }
+  
+    button:hover {
+      background-color: #ddd;
+    }
+  
+    .message {
+      margin-bottom: 1rem;
+      color: #fff;
+    }
+  
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+  
+    .header h1 {
+      font-size: 2rem;
+      margin-left: 0.5rem;
+      color: #fff;
+    }
+  </style>
+    
+  
+</head>
+<body>
+  <h1>📬 Message Board</h1>
+  <textarea id="content" placeholder="Type your message..."></textarea><br>
+  <button onclick="submitMessage()">Send</button>
+
+  <h2>Messages</h2>
+  <div id="messages"></div>
+
+  <script>
+    async function fetchMessages() {
+      const query = `{
+        getMessages {
+          id
+          content
+          timestamp
+        }
+      }`;
+
+      const res = await fetch("/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query })
+      });
+      const json = await res.json();
+      const messages = json.data.getMessages;
+      const container = document.getElementById("messages");
+      container.innerHTML = messages.map(msg => `
+        <div class="message">
+          <strong>#${msg.id}</strong>: ${msg.content}<br>
+          <small>${msg.timestamp}</small>
+        </div>
+      `).join("");
+    }
+
+    async function submitMessage() {
+      const content = document.getElementById("content").value;
+      const mutation = `
+        mutation {
+          addMessage(input: { content: "${content.replace(/"/g, '\\"')}" }) {
+            ... on Message {
+              id
+              content
+              timestamp
+            }
+            ... on Error {
+              message
+            }
+          }
+        }
+      `;
+
+      const res = await fetch("/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: mutation })
+      });
+      const json = await res.json();
+      if (json.data.addMessage.message) {
+        alert("Error: " + json.data.addMessage.message);
+      } else {
+        document.getElementById("content").value = "";
+        fetchMessages();
+      }
+    }
+
+    fetchMessages();
+  </script>
+</body>
+</html>
+
